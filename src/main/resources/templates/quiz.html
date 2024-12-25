@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Take Your Quiz</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #6C63FF, #3F3D56);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+
+        .quiz-container {
+            background-color: #fff;
+            color: #333;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #6C63FF, #3F3D56);
+            color: #fff;
+            text-align: center;
+            padding: 20px 10px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin: 0;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        .form-card {
+            padding: 30px;
+        }
+
+        .form-card h5 {
+            font-size: 1.25rem;
+            margin-bottom: 15px;
+            animation: slideIn 0.5s ease-in-out;
+        }
+
+        .form-check {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .form-check:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-check-input:checked {
+            background-color: #6C63FF;
+            border-color: #6C63FF;
+        }
+
+        .form-check-label {
+            font-size: 1rem;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #6C63FF, #3F3D56);
+            color: #fff;
+            font-size: 1.2rem;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            width: 100%;
+            transition: background 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .submit-btn:hover {
+            background: linear-gradient(135deg, #3F3D56, #6C63FF);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            0% {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="quiz-container">
+    <div class="header">
+        <h1><i class="fas fa-graduation-cap"></i> Take Your Quiz</h1>
+    </div>
+    <div class="form-card">
+        <form th:action="@{/quiz/submit}" method="post">
+            <div th:each="question, iterStat : ${quiz.questions}" class="mb-5">
+                <h5 th:text="${iterStat.index + 1} + '. ' + ${question.question}"></h5>
+                <div class="form-check" th:each="option : ${question.options.entrySet()}">
+                    <input
+                            class="form-check-input"
+                            type="radio"
+                            th:id="'option_' + ${iterStat.index} + '_' + ${option.key}"
+                            th:name="'question_' + ${iterStat.index}"
+                            th:value="${option.key}"
+                            required>
+                    <label class="form-check-label" th:for="'option_' + ${iterStat.index} + '_' + ${option.key}" th:text="${option.key + '. ' + option.value}"></label>
+                </div>
+            </div>
+            <div class="text-center">
+                <button type="submit" class="btn submit-btn">Submit Quiz</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+</body>
+</html>
