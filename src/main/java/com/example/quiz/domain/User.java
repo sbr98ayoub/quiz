@@ -1,15 +1,12 @@
 package com.example.quiz.domain;
 
+import com.example.quiz.model.Quiz;
 import jakarta.persistence.*;
-import lombok.*;
-
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
-@Table(name="Users")
-@Data
-@Getter
-@Setter
+@Table(name = "Users")
 public class User {
 
     @Id
@@ -22,11 +19,48 @@ public class User {
     @Column(nullable = false)
     private String fullName;
 
-
     @Column(nullable = false)
     private String password;
 
     private LocalDateTime createdAt;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Quiz> quizzes;
 
+    // Getters
+    public String getEmail() {
+        return email;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+    public Long getId(){
+        return this.id;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    // Setters
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 }

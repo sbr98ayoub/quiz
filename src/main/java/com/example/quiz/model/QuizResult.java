@@ -1,17 +1,58 @@
 package com.example.quiz.model;
 
+import jakarta.persistence.*;
 import java.util.List;
 import java.util.Map;
 
+@Entity
+@Table(name = "quiz_results")
 public class QuizResult {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @OneToOne
+    @JoinColumn(name = "quiz_id", nullable = false)
+    private Quiz quiz;
+
+    @Column(nullable = false)
     private int score;
-    private Map<Integer, String> corrections; // Key: Question index, Value: Correct answer
+
+    @ElementCollection
+    @CollectionTable(name = "quiz_corrections", joinColumns = @JoinColumn(name = "result_id"))
+    @MapKeyColumn(name = "question_index")
+    @Column(name = "correct_answer")
+    private Map<Integer, String> corrections;
+
+    @ElementCollection
+    @CollectionTable(name = "quiz_feedback", joinColumns = @JoinColumn(name = "result_id"))
+    @Column(name = "feedback")
     private List<String> detailedFeedback;
 
-    public QuizResult(int score, Map<Integer, String> corrections, List<String> detailedFeedback) {
+    public QuizResult() {}
+
+    public QuizResult(Quiz quiz, int score, Map<Integer, String> corrections, List<String> detailedFeedback) {
+        this.quiz = quiz;
         this.score = score;
         this.corrections = corrections;
         this.detailedFeedback = detailedFeedback;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Quiz getQuiz() {
+        return quiz;
+    }
+
+    public void setQuiz(Quiz quiz) {
+        this.quiz = quiz;
     }
 
     public int getScore() {

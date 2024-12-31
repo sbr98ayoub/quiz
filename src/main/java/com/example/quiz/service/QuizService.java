@@ -4,9 +4,14 @@ import com.example.quiz.model.Question;
 import com.example.quiz.model.Quiz;
 import com.example.quiz.model.QuizResult;
 import com.example.quiz.model.UserResponse;
+import com.example.quiz.repository.QuestionRepository;
+import com.example.quiz.repository.QuizRepository;
+import com.example.quiz.repository.QuizResultRepository;
+import com.example.quiz.repository.UserResponseRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -15,6 +20,7 @@ import reactor.util.retry.Retry;
 
 import java.time.Duration;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class QuizService {
@@ -25,13 +31,21 @@ public class QuizService {
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
     private Quiz currentQuiz;
+    private final QuizRepository quizRepository;
+    private  final QuizResultRepository quizResultRepository ;
+    private  final UserResponseRepository userResponseRepository;
+    private final QuestionRepository questionRepository;
 
-    public QuizService(ObjectMapper objectMapper) {
+    public QuizService(ObjectMapper objectMapper, QuizRepository quizRepository, QuizResultRepository quizResultRepository, UserResponseRepository userResponseRepository, QuestionRepository questionRepository) {
+        this.quizResultRepository = quizResultRepository;
+        this.userResponseRepository = userResponseRepository;
+        this.questionRepository = questionRepository;
         this.webClient = WebClient.builder()
                 .baseUrl(LLAMA_API_URL)
                 .build();
         this.objectMapper = objectMapper;
         this.currentQuiz = null;
+        this.quizRepository=quizRepository;
     }
 
     public void setCurrentQuiz(Quiz quiz) {
@@ -82,52 +96,52 @@ public class QuizService {
     }
 
     public QuizResult evaluateQuiz(Quiz quiz, UserResponse userResponse) {
+        int score = 0;
         Map<Integer, String> corrections = new HashMap<>();
         List<String> detailedFeedback = new ArrayList<>();
-        int score = 0;
 
-        for (int i = 0; i < quiz.getQuestions().size(); i++) {
-            Question question = quiz.getQuestions().get(i);
-            String userAnswer = userResponse.getUserAnswers().get("question_" + i);
+        for (Question question : quiz.getQuestions()) {
+            String userAnswer = userResponse.getUserAnswers().get(String.valueOf(question.getId()));
             String correctAnswer = question.getCorrectAnswer();
 
-            if (correctAnswer.equals(userAnswer)) {
+            if (userAnswer != null && userAnswer.equals(correctAnswer)) {
                 score++;
-                detailedFeedback.add("Question " + (i + 1) + ": Correct!");
+                detailedFeedback.add("Question: " + question.getQuestion() + " - Correct!");
             } else {
-                corrections.put(i, correctAnswer);
-                detailedFeedback.add("Question " + (i + 1) + ": Incorrect. Correct answer is " + correctAnswer);
+                corrections.put(Math.toIntExact(question.getId()), correctAnswer);
+                detailedFeedback.add("Question: " + question.getQuestion() + " - Incorrect. Correct answer: " + correctAnswer);
             }
         }
 
+        quiz.setScore((double) score); // Set score for the quiz
 
-        return new QuizResult(score, corrections, detailedFeedback);
+        return new QuizResult(quiz, score, corrections, detailedFeedback);
     }
+
+
 
 
     private String extractQuizJson(String jsonResponse) {
         try {
-            // Clean and sanitize the response
-            String sanitizedResponse = sanitizeJson(jsonResponse);
+            // Remove any text before the actual JSON array starts
+            int startIndex = jsonResponse.indexOf('[');
+            int endIndex = jsonResponse.lastIndexOf(']');
 
-            JsonNode root = objectMapper.readTree(sanitizedResponse);
-            if (root.isArray()) {
-                return root.toString();
+            if (startIndex == -1 || endIndex == -1 || startIndex >= endIndex) {
+                throw new IllegalStateException("Response does not contain a valid JSON array.");
             }
 
-            StringBuilder quizBuilder = new StringBuilder();
-            root.forEach(node -> {
-                if (node.has("response")) {
-                    quizBuilder.append(node.get("response").asText());
-                }
-            });
+            String extractedJson = jsonResponse.substring(startIndex, endIndex + 1).trim();
 
-            String result = quizBuilder.toString().trim();
-            if (result.isEmpty()) {
-                throw new IllegalStateException("Extracted quiz JSON is empty.");
+            // Validate and sanitize the extracted JSON
+            String sanitizedJson = sanitizeJson(extractedJson);
+
+            JsonNode root = objectMapper.readTree(sanitizedJson);
+            if (!root.isArray()) {
+                throw new IllegalStateException("Extracted content is not a JSON array.");
             }
 
-            return result;
+            return root.toString();
         } catch (Exception e) {
             logger.error("Error extracting quiz JSON: {}", e.getMessage(), e);
             throw new RuntimeException("Error extracting quiz JSON: " + e.getMessage(), e);
@@ -155,11 +169,8 @@ private String sanitizeJson(String jsonResponse) {
         sanitizedResponse = sanitizedResponse.replaceAll(",\\s*(\\}|\\])", "$1");
 
         // Ensure the JSON is properly enclosed (only if not already valid)
-        if (!sanitizedResponse.startsWith("{") && !sanitizedResponse.startsWith("[")) {
-            sanitizedResponse = "{" + sanitizedResponse;
-        }
-        if (!sanitizedResponse.endsWith("}") && !sanitizedResponse.endsWith("]")) {
-            sanitizedResponse = sanitizedResponse + "}";
+        if (!sanitizedResponse.startsWith("[") || !sanitizedResponse.endsWith("]")) {
+            throw new IllegalStateException("Sanitized JSON is not a valid JSON array.");
         }
 
         // Collapse excessive whitespace (e.g., newlines, tabs) into a single space
@@ -190,4 +201,75 @@ private String sanitizeJson(String jsonResponse) {
             throw new RuntimeException("Error parsing questions from JSON: " + e.getMessage(), e);
         }
     }
+
+
+    public Quiz saveQuiz(Quiz quiz) {
+        logger.info("Saving quiz with {} questions.", quiz.getQuestions().size());
+        quiz.getQuestions().forEach(question -> {
+            logger.info("Question ID {}: User Response = {}", question.getId(), question.getUserResponse());
+        });
+
+        Quiz savedQuiz = quizRepository.save(quiz); // Ensure cascading works
+        logger.info("Quiz saved with ID: {}", savedQuiz.getId());
+        return savedQuiz;
+    }
+
+    public List<Quiz> getQuizzesByUser(Long userId) {
+        return quizRepository.findByUserId(userId);
+    }
+
+    public List<Quiz> getQuizzesByProgrammingLanguage(String programmingLanguage) {
+        return quizRepository.findByProgrammingLanguage(programmingLanguage);
+    }
+
+    public QuizResult saveQuizResult(QuizResult result) {
+        return quizResultRepository.save(result);
+    }
+    public void saveUserResponses(Map<String, String> userAnswers, Quiz quiz) {
+        List<Question> questions = quiz.getQuestions();
+
+        for (Question question : questions) {
+            String userAnswer = userAnswers.get(String.valueOf(question.getId()));
+            question.setUserResponse(userAnswer); // Directly set the user response
+        }
+
+        // Save updated questions using the QuestionRepository
+        questionRepository.saveAll(questions);
+    }
+
+
+    private String cleanResponse(String response) {
+        // Locate the start '[' and end ']' of the JSON array
+        int startIndex = response.indexOf('[');
+        int endIndex = response.lastIndexOf(']');
+
+        if (startIndex == -1 || endIndex == -1 || startIndex >= endIndex) {
+            throw new IllegalStateException("Response does not contain a valid JSON array.");
+        }
+
+        // Extract and return the JSON array
+        return response.substring(startIndex, endIndex + 1).trim();
+    }
+
+    public Quiz getQuizById(Long quizId, Long userId) {
+        return quizRepository.findByIdAndUserId(quizId, userId);
+    }
+
+    public UserResponse getUserResponseByQuizId(Long quizId) {
+        return userResponseRepository.findByQuizId(quizId)
+                .orElseThrow(() -> new RuntimeException("UserResponse not found for quizId: " + quizId));
+    }
+
+    public void saveQuestions(List<Question> questions) {
+        questionRepository.saveAll(questions);
+    }
+
+    @Transactional
+    public Question mergeQuestion(Question question) {
+        return questionRepository.findById(question.getId())
+                .orElseThrow(() -> new RuntimeException("Question not found for ID: " + question.getId()));
+    }
+
+
+
 }
