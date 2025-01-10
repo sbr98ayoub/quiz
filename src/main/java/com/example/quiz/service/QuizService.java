@@ -23,6 +23,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class QuizService {
 
     private static final Logger logger = LoggerFactory.getLogger(QuizService.class);
@@ -203,16 +204,61 @@ private String sanitizeJson(String jsonResponse) {
     }
 
 
-    public Quiz saveQuiz(Quiz quiz) {
-        logger.info("Saving quiz with {} questions.", quiz.getQuestions().size());
-        quiz.getQuestions().forEach(question -> {
-            logger.info("Question ID {}: User Response = {}", question.getId(), question.getUserResponse());
-        });
+    @Transactional
+    public void saveQuiz(Quiz quiz) {
+        quizRepository.save(quiz);
+    }
 
-        Quiz savedQuiz = quizRepository.save(quiz); // Ensure cascading works
-        logger.info("Quiz saved with ID: {}", savedQuiz.getId());
+    @Transactional
+    public Quiz saveQuizWithQuestions(Quiz quiz) {
+        logger.info("Saving Quiz: ID = {}", quiz.getId());
+
+        // Save quiz first to generate its ID
+        Quiz savedQuiz = quizRepository.save(quiz);
+        logger.info("Saved Quiz: ID = {}", savedQuiz.getId());
+
+        // Set quiz reference and save questions
+        for (Question question : quiz.getQuestions()) {
+            logger.info("Saving Question: ID = {}, User Response = {}", question.getId(), question.getUserResponse());
+            question.setQuiz(savedQuiz);
+            Question savedQuestion = questionRepository.save(question);
+            logger.info("Saved Question: ID = {}", savedQuestion.getId());
+        }
+
         return savedQuiz;
     }
+
+
+    @Transactional
+    public Quiz saveQuizWithQuestions(Quiz quiz, List<Question> questions) {
+        Quiz managedQuiz = quizRepository.findById(quiz.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Quiz not found"));
+
+        for (Question question : questions) {
+            Question managedQuestion = questionRepository.findById(question.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Question not found"));
+            managedQuestion.setUserResponse(question.getUserResponse());
+            questionRepository.save(managedQuestion);
+        }
+
+        return quizRepository.save(managedQuiz);
+    }
+
+
+    @Transactional
+    public void updateQuestionResponses(List<Question> updatedQuestions) {
+        for (Question updatedQuestion : updatedQuestions) {
+            logger.info("Updating Question: ID = {}", updatedQuestion.getId());
+            Question managedQuestion = questionRepository.findById(updatedQuestion.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Question not found"));
+            managedQuestion.setUserResponse(updatedQuestion.getUserResponse());
+            questionRepository.save(managedQuestion);
+            logger.info("Updated Question: ID = {}, User Response = {}", managedQuestion.getId(), managedQuestion.getUserResponse());
+        }
+    }
+
+
+
 
     public List<Quiz> getQuizzesByUser(Long userId) {
         return quizRepository.findByUserId(userId);

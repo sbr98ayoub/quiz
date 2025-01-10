@@ -1,124 +1,3 @@
-//package com.example.quiz.controller;
-//
-//import com.example.quiz.model.Question;
-//import com.example.quiz.model.Quiz;
-//import com.example.quiz.model.QuizResult;
-//import com.example.quiz.model.UserResponse;
-//import com.example.quiz.service.QuizService;
-//import org.slf4j.Logger;
-//import org.slf4j.LoggerFactory;
-//import org.springframework.beans.factory.annotation.Autowired;
-//import org.springframework.stereotype.Controller;
-//import org.springframework.ui.Model;
-//import org.springframework.web.bind.annotation.*;
-//
-//import java.util.HashMap;
-//import java.util.List;
-//import java.util.Map;
-//
-//@Controller
-//@RequestMapping("/quiz")
-//public class QuizController {
-//
-//    private static final Logger logger = LoggerFactory.getLogger(QuizController.class);
-//
-//    private final QuizService quizService;
-//
-//    @Autowired
-//    public QuizController(QuizService quizService) {
-//        this.quizService = quizService;
-//    }
-//
-//    @GetMapping
-//    public String getQuizForm() {
-//        return "index"; // Renders the index.html page
-//    }
-//
-//    @PostMapping("/generate")
-//    public String generateQuiz(
-//            @RequestParam String programmingLanguage,
-//            @RequestParam String difficulty,
-//            Model model) {
-//
-//        logger.info("Generating quiz for language={} and difficulty={}", programmingLanguage, difficulty);
-//
-//        String prompt = String.format(
-//                "Generate a multiple-choice programming quiz as a valid JSON array. The format should be strictly as follows, with no extra commas or malformed syntax: " +
-//                        "[{\"question\":\"<question_text>\",\"options\":{\"A\":\"<option_A>\",\"B\":\"<option_B>\",\"C\":\"<option_C>\",\"D\":\"<option_D>\"},\"correctAnswer\":\"<correct_option>\"}, " +
-//                        "{\"question\":\"<next_question_text>\",\"options\":{\"A\":\"<next_option_A>\",\"B\":\"<next_option_B>\",\"C\":\"<next_option_C>\",\"D\":\"<next_option_D>\"},\"correctAnswer\":\"<next_correct_option>\"}, ...]. " +
-//                        "Ensure that all keys and string values are enclosed in double quotes, there are no extra commas, and the JSON array is valid and well-formed. " +
-//                        "The quiz should cover the %s language at %s difficulty level and contain exactly 10 questions. Do not include any additional explanation or text outside of the JSON format.",
-//                programmingLanguage, difficulty
-//        );
-//
-//        try {
-//            // Fetch and parse the quiz using QuizService
-//            List<Question> questions = quizService.fetchAndParseQuiz(prompt);
-//
-//            if (questions == null || questions.isEmpty()) {
-//                logger.warn("Failed to parse questions or received an empty list.");
-//                return "error"; // Handle error case
-//            }
-//
-//            // Create a Quiz model and add it to the view
-//            Quiz quiz = new Quiz(questions);
-//            quizService.setCurrentQuiz(quiz);
-//
-//            model.addAttribute("quiz", quiz);
-//
-//            logger.info("Successfully generated and parsed quiz.");
-//            return "quiz"; // Renders the quiz.html page
-//
-//        } catch (Exception e) {
-//            logger.error("Error generating or parsing quiz: {}", e.getMessage(), e);
-//            return "error"; // Handle exception case
-//        }
-//    }
-//
-//        @PostMapping("/submit")
-//        public String submitQuiz(@RequestParam Map<String, String> responses, Model model) {
-//            logger.info("Processing quiz submission: {}", responses);
-//
-//            // Fetch the quiz object from the session or database
-//            Quiz quiz = quizService.getCurrentQuiz(); // Add logic to retrieve the quiz object
-//            if (quiz == null) {
-//                logger.error("Quiz object is null.");
-//                return "error";
-//            }
-//
-//            // Calculate the score and corrections
-//            QuizResult result = quizService.evaluateQuiz(quiz, new UserResponse(responses));
-//            int totalQuestions = quiz.getQuestions().size();
-//            double scorePercentage = (result.getScore() / (double) totalQuestions) * 100;
-//
-//            // Add the quiz questions, user responses, and correct answers for feedback display
-//            model.addAttribute("quiz", quiz);
-//            System.out.println("----responses are ----- : "+responses);
-//            // Add results to the model
-//            model.addAttribute("scorePercentage", Math.round(scorePercentage));
-//            model.addAttribute("corrections", result.getDetailedFeedback());
-//            Map<Integer, String> normalizedResponses = new HashMap<>();
-//            for (Map.Entry<String, String> entry : responses.entrySet()) {
-//                // Extract numeric index from "question_0", "question_1", etc.
-//                String key = entry.getKey();
-//                int index = Integer.parseInt(key.split("_")[1]);
-//                normalizedResponses.put(index, entry.getValue());
-//            }
-//            model.addAttribute("responses", normalizedResponses);
-//
-//            logger.info("User Responses: {}", responses);
-//            logger.info("Quiz Questions: {}", quiz.getQuestions());
-//            logger.info("Correct Answers: {}", quiz.getQuestions().stream()
-//                    .map(Question::getCorrectAnswer)
-//                    .toList());
-//            logger.info("Score Percentage: {}", scorePercentage);
-//
-//
-//            return "result"; // Redirect to result.html
-//        }
-//
-//}
-
 package com.example.quiz.controller;
 
 import com.example.quiz.domain.User;
@@ -136,10 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -148,33 +24,38 @@ import java.util.stream.Collectors;
 public class QuizController {
 
     private static final Logger logger = LoggerFactory.getLogger(QuizController.class);
+
     @Autowired
     private final QuizService quizService;
+
     @Autowired
-    private  final UserService userService ;
+    private final UserService userService;
 
-
-    public QuizController(QuizService quizService,UserService userService) {
-        this.userService=userService;
+    public QuizController(QuizService quizService, UserService userService) {
         this.quizService = quizService;
+        this.userService = userService;
     }
 
-    // Endpoint to get the quiz form
+    // A simple welcome or test endpoint
     @GetMapping
     public ResponseEntity<String> getQuizForm() {
         return ResponseEntity.ok("Welcome to the Quiz API. Use POST /quiz/generate to generate a quiz.");
     }
 
-    // Endpoint to generate a quiz
+    /**
+     * 1) Generate quiz from LLaMA or similar AI
+     * 2) Parse the returned JSON and create ephemeral IDs for each question
+     */
     @PostMapping("/generate")
     public ResponseEntity<?> generateQuiz(@RequestBody Map<String, String> requestBody) {
         String programmingLanguage = requestBody.get("programmingLanguage");
         String difficulty = requestBody.get("difficulty");
         logger.info("Generating quiz for language={} and difficulty={}", programmingLanguage, difficulty);
 
+        // This is your original prompt. Keep it as strict as you need.
         String prompt = String.format(
-               "Generate a multiple-choice programming quiz as a valid JSON array. The format should be strictly as follows, with no extra commas or malformed syntax: " +
-                      "[{\"question\":\"<question_text>\",\"options\":{\"A\":\"<option_A>\",\"B\":\"<option_B>\",\"C\":\"<option_C>\",\"D\":\"<option_D>\"},\"correctAnswer\":\"<correct_option>\"}, " +
+                "Generate a multiple-choice programming quiz as a valid JSON array. The format should be strictly as follows, with no extra commas or malformed syntax: " +
+                        "[{\"question\":\"<question_text>\",\"options\":{\"A\":\"<option_A>\",\"B\":\"<option_B>\",\"C\":\"<option_C>\",\"D\":\"<option_D>\"},\"correctAnswer\":\"<correct_option>\"}, " +
                         "{\"question\":\"<next_question_text>\",\"options\":{\"A\":\"<next_option_A>\",\"B\":\"<next_option_B>\",\"C\":\"<next_option_C>\",\"D\":\"<next_option_D>\"},\"correctAnswer\":\"<next_correct_option>\"}, ...]. " +
                         "Ensure that all keys and string values are enclosed in double quotes, there are no extra commas, and the JSON array is valid and well-formed. " +
                         "The quiz should cover the %s language at %s difficulty level and contain exactly 10 questions. Do not include any additional explanation or text outside of the JSON format.",
@@ -182,49 +63,55 @@ public class QuizController {
         );
 
         try {
-            // Fetch and parse the quiz using QuizService
+            // Use the service to call LLaMA (or any other AI endpoint) and parse the JSON
             List<Question> questions = quizService.fetchAndParseQuiz(prompt);
-
             if (questions == null || questions.isEmpty()) {
                 logger.warn("Failed to parse questions or received an empty list.");
                 return ResponseEntity.status(500).body("Error generating quiz.");
             }
 
-            // Assign temporary IDs to questions
+            // (Approach A) Assign ephemeral (in-memory) IDs so the front end can map answers.
             long tempId = 1L;
-            for (Question question : questions) {
-                question.setId(tempId++);
+            for (Question q : questions) {
+                q.setId(tempId++);
             }
 
-            // Create a Quiz model and set it to the service
+            // Create the Quiz object in memory
             Quiz quiz = new Quiz();
-            quiz.setQuestions(questions);
             quiz.setProgrammingLanguage(programmingLanguage);
+            quiz.setQuestions(questions);
+
+            // Save it in memory only (do NOT persist). If you DO want to persist now, see Approach B
             quizService.setCurrentQuiz(quiz);
 
             logger.info("Successfully generated and parsed quiz.");
-            return ResponseEntity.ok(quiz); // Returning the quiz object in the response
-
+            return ResponseEntity.ok(quiz); // returning the in-memory quiz
         } catch (Exception e) {
             logger.error("Error generating or parsing quiz: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body("Error generating quiz.");
         }
     }
 
+    /**
+     * Submit quiz answers
+     * The front end calls /quiz/submit with `id = userId` plus all question_id=answer
+     * For example: POST /quiz/submit?id=1&1=A&2=B&3=A ...
+     */
     @PostMapping("/submit")
     public ResponseEntity<?> submitQuiz(@RequestParam Map<String, String> responses, @RequestParam Long id) {
         logger.info("Processing quiz submission for user ID: {}", id);
+        // The "id" param is the userId, but we want to remove it from the map so it doesn't mess up mapping
         responses.remove("id");
         logger.info("Received responses: {}", responses);
 
-        // Fetch the quiz object
+        // 1) Retrieve the in-memory quiz
         Quiz quiz = quizService.getCurrentQuiz();
         if (quiz == null) {
             logger.error("Quiz object is null.");
             return ResponseEntity.status(400).body("Quiz not found.");
         }
 
-        // Validate user
+        // 2) Validate user
         User user = userService.getUserById(id);
         if (user == null) {
             logger.error("User with ID {} not found.", id);
@@ -232,128 +119,121 @@ public class QuizController {
         }
         quiz.setUser(user);
 
-        // Map responses to question IDs
+        // 3) Re-map the responses to match ephemeral question IDs
         Map<String, String> mappedResponses = new HashMap<>();
         for (Question question : quiz.getQuestions()) {
-            String questionKey = String.valueOf(question.getId());
-            if (responses.containsKey(questionKey)) {
-                mappedResponses.put(questionKey, responses.get(questionKey));
+            // question.getId() is a Long we assigned in memory
+            String key = String.valueOf(question.getId());
+            if (responses.containsKey(key)) {
+                mappedResponses.put(key, responses.get(key));
             }
         }
-
         logger.info("Mapped responses to question IDs: {}", mappedResponses);
-        // Map user responses to questions
+
+        // 4) Set userResponse for each question
         for (Question question : quiz.getQuestions()) {
-            String userAnswer = responses.get(String.valueOf(question.getId()));
+            String userAnswer = mappedResponses.get(String.valueOf(question.getId()));
             if (userAnswer != null) {
-                question.setUserResponse(userAnswer); // Set user response
+                question.setUserResponse(userAnswer);
                 logger.info("Setting user response for Question ID {}: {}", question.getId(), userAnswer);
             }
         }
 
-        // Calculate the score and corrections without saving data
+        // 5) Evaluate the quiz
+        //    In memory we rely on question.getId() not being null
         UserResponse userResponse = new UserResponse(quiz, mappedResponses);
         QuizResult result = quizService.evaluateQuiz(quiz, userResponse);
 
+        // 6) Build the response
         int totalQuestions = quiz.getQuestions().size();
         double scorePercentage = (result.getScore() / (double) totalQuestions) * 100;
         quiz.setScore(scorePercentage);
 
-        // Build correction details
-        List<Map<String, String>> corrections = quiz.getQuestions().stream().map(question -> {
-            String questionId = String.valueOf(question.getId());
-            String userAnswer = mappedResponses.get(questionId);
-            Map<String, String> correction = new HashMap<>();
-            System.out.println("------- question and Answer and details : " + question.getQuestion() +
-                    "  correct answer : " + question.getCorrectAnswer() +
-                    "  user response  " + question.getUserResponse());
-            correction.put("question", question.getQuestion());
-            correction.put("yourAnswer", userAnswer != null ? userAnswer : "N/A");
-            correction.put("correctAnswer", question.getCorrectAnswer());
-            return correction;
-        }).collect(Collectors.toList());
+        // Build corrections
+        List<Map<String, String>> corrections = quiz.getQuestions().stream()
+                .map(question -> {
+                    Map<String, String> corr = new HashMap<>();
+                    corr.put("question", question.getQuestion());
+                    corr.put("yourAnswer", question.getUserResponse() != null ? question.getUserResponse() : "N/A");
+                    corr.put("correctAnswer", question.getCorrectAnswer());
+                    return corr;
+                })
+                .collect(Collectors.toList());
 
-        // Prepare the response
+        // Return JSON
         Map<String, Object> response = Map.of(
                 "scorePercentage", Math.round(scorePercentage),
                 "corrections", corrections
         );
-
         logger.info("Quiz submitted successfully for user ID: {}", id);
         return ResponseEntity.ok(response);
     }
 
-
+    /**
+     * Store the quiz in the DB. Approach A: we set question.setId(null) so the DB
+     * will treat them as brand-new rows.
+     */
     @PostMapping("/store")
     public ResponseEntity<?> storeQuiz(
             @RequestParam Long userId,
             @RequestParam String programmingLanguage,
-            @RequestBody Map<String, String> userAnswers) {
+            @RequestBody List<Question> userAnswers) {
 
         if (userAnswers == null || userAnswers.isEmpty()) {
-            logger.error("User answers are missing or empty.");
-            return ResponseEntity.status(400).body("User answers are missing or empty.");
+            return ResponseEntity.badRequest().body("User answers are missing or empty.");
         }
 
         Quiz currentQuiz = quizService.getCurrentQuiz();
         if (currentQuiz == null) {
-            logger.error("No current quiz found in session.");
-            return ResponseEntity.status(400).body("No quiz to store.");
+            return ResponseEntity.badRequest().body("No quiz to store.");
         }
 
-        logger.info("Storing quiz for user ID: {}, programmingLanguage: {}", userId, programmingLanguage);
-
-        // Retrieve the user
+        // Validate user
         User user = userService.getUserById(userId);
         if (user == null) {
-            logger.error("User with ID {} not found.", userId);
-            return ResponseEntity.status(404).body("User not found.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
         }
 
-        // Attach user and programming language to the quiz
+        // Set quiz metadata
         currentQuiz.setUser(user);
         currentQuiz.setProgrammingLanguage(programmingLanguage);
 
-        // Ensure questions are attached to the persistence context
-        List<Question> questions = currentQuiz.getQuestions();
-        List<Question> managedQuestions = new ArrayList<>();
+        // Update questions from the request, then set the ID to null to force new inserts
+        for (int i = 0; i < currentQuiz.getQuestions().size(); i++) {
+            Question question = currentQuiz.getQuestions().get(i);
+            Question userQ = userAnswers.get(i);
 
-        for (Question question : questions) {
-            String userAnswer = userAnswers.get(String.valueOf(question.getId()));
-            if (userAnswer != null) {
-                question.setUserResponse(userAnswer); // Set the user's response in the Question entity
-            }
-            // Merge question to attach to the persistence context
-            managedQuestions.add(quizService.mergeQuestion(question));
+            // We forcibly set the question's ID to null so JPA inserts a new row
+            question.setId(null);
+            question.setUserResponse(userQ.getUserResponse());
+            question.setQuiz(currentQuiz);
         }
 
-        currentQuiz.setQuestions(managedQuestions);
+        logger.info("Storing Quiz: ID = {}", currentQuiz.getId());
+        for (Question question : currentQuiz.getQuestions()) {
+            logger.info("Storing Question: ID = {}, User Response = {}",
+                    question.getId(), question.getUserResponse());
+        }
 
+        // Persist the quiz with brand-new question rows
         try {
-            // Save the quiz
-            quizService.saveQuiz(currentQuiz);
+            quizService.saveQuizWithQuestions(currentQuiz);
+            logger.info("Successfully stored Quiz: ID = {}", currentQuiz.getId());
 
-            return ResponseEntity.ok(Map.of(
-                    "message", "Quiz and responses stored successfully.",
-                    "quizId", currentQuiz.getId()
-            ));
+            for (Question question : currentQuiz.getQuestions()) {
+                logger.info("Stored Question: ID = {}, User Response = {}",
+                        question.getId(), question.getUserResponse());
+            }
+
+            return ResponseEntity.ok("Quiz and responses stored successfully.");
         } catch (Exception e) {
-            logger.error("Error storing quiz or responses: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body("Error storing quiz. Please try again.");
+            logger.error("Error storing quiz: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error storing quiz.");
         }
     }
 
-
-
-
-
-
-
-
-
-
-
-
+    // GET quiz history
     @GetMapping("/history")
     public ResponseEntity<?> getQuizHistory(@RequestParam Long userId) {
         List<Quiz> quizzes = quizService.getQuizzesByUser(userId);
@@ -363,7 +243,7 @@ public class QuizController {
             Map<String, Object> quizData = new HashMap<>();
             quizData.put("id", quiz.getId());
             String formattedDate = quiz.getCreatedAt().toLocalDate().format(formatter);
-            quizData.put("date",formattedDate);
+            quizData.put("date", formattedDate);
             quizData.put("score", quiz.getScore() != null ? quiz.getScore() : "Not Submitted");
             quizData.put("programmingLanguage", quiz.getProgrammingLanguage());
             return quizData;
@@ -372,14 +252,15 @@ public class QuizController {
         return ResponseEntity.ok(quizHistory);
     }
 
+    // GET quiz details
     @GetMapping("/details")
     public ResponseEntity<?> getQuizDetails(@RequestParam Long quizId, @RequestParam Long userId) {
         // Fetch the quiz by ID and user ID
         Quiz quiz = quizService.getQuizById(quizId, userId);
 
-        // If the quiz is not found, return a 404 status
         if (quiz == null) {
-            return ResponseEntity.status(404).body(Map.of("message", "Quiz not found for the given user."));
+            return ResponseEntity.status(404)
+                    .body(Map.of("message", "Quiz not found for the given user."));
         }
 
         // Prepare question details including user responses
@@ -391,11 +272,12 @@ public class QuizController {
             String correctAnswerValue = question.getOptions().get(question.getCorrectAnswer());
             questionData.put("correctAnswer", correctAnswerValue);
 
-            // Map userResponse key to its option value (if userResponse is not null)
-            String userResponseValue = question.getUserResponse() != null ? question.getOptions().get(question.getUserResponse()) : "N/A";
+            // Map userResponse key to its option value
+            String userResponseValue = question.getUserResponse() != null
+                    ? question.getOptions().get(question.getUserResponse())
+                    : "N/A";
             questionData.put("userResponse", userResponseValue);
 
-            // Debugging log to ensure data is fetched correctly
             logger.info("Question: {}, Correct Answer: {}, User Response: {}",
                     question.getQuestion(), correctAnswerValue, userResponseValue);
 
@@ -405,10 +287,4 @@ public class QuizController {
         // Return the details of the quiz questions
         return ResponseEntity.ok(questionDetails);
     }
-
-
-
-
-
 }
-

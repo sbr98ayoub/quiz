@@ -24,7 +24,15 @@ public class Question {
     private String correctAnswer;
 
     @Column(name = "user_response", nullable = true)
-    private String userResponse; // New field to store user's response
+    private String userResponse;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "quiz_id", nullable = false)
+    private Quiz quiz;
+    @Version
+
+    private int version;
+
     public Question() {}
 
     public Question(String question, Map<String, String> options, String correctAnswer) {
@@ -33,6 +41,8 @@ public class Question {
         this.correctAnswer = correctAnswer;
     }
 
+
+    // Getters and setters
     public Long getId() {
         return id;
     }
@@ -64,11 +74,20 @@ public class Question {
     public void setCorrectAnswer(String correctAnswer) {
         this.correctAnswer = correctAnswer;
     }
+
     public String getUserResponse() {
         return userResponse;
     }
 
     public void setUserResponse(String userResponse) {
         this.userResponse = userResponse;
+    }
+
+    public Quiz getQuiz() {
+        return quiz;
+    }
+
+    public void setQuiz(Quiz quiz) {
+        this.quiz = quiz;
     }
 }

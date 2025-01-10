@@ -3,6 +3,7 @@ package com.example.quiz.model;
 import com.example.quiz.domain.User;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -16,23 +17,23 @@ public class Quiz {
     @Column(nullable = false)
     private String programmingLanguage;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true) // Add CascadeType.ALL
-    @JoinColumn(name = "quiz_id") // Foreign key in the Question table
-    private List<Question> questions;
+    @OneToMany(mappedBy = "quiz", fetch = FetchType.LAZY)
+    private List<Question> questions = new ArrayList<>();
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt ;
+    private LocalDateTime createdAt;
 
     @Column(name = "score", nullable = true)
-    private Double score; // Nullable initially, as the score will be set after quiz submission
+    private Double score;
 
     public Quiz() {
         this.createdAt = LocalDateTime.now();
     }
+
 
     // Getters and Setters
     public Long getId() {
