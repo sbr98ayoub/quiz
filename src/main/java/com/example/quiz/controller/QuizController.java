@@ -52,7 +52,7 @@ public class QuizController {
         String difficulty = requestBody.get("difficulty");
         logger.info("Generating quiz for language={} and difficulty={}", programmingLanguage, difficulty);
 
-        // This is your original prompt. Keep it as strict as you need.
+        // This is the original prompt. Keep it as strict as needed.
         String prompt = String.format(
                 "Generate a multiple-choice programming quiz as a valid JSON array. The format should be strictly as follows, with no extra commas or malformed syntax: " +
                         "[{\"question\":\"<question_text>\",\"options\":{\"A\":\"<option_A>\",\"B\":\"<option_B>\",\"C\":\"<option_C>\",\"D\":\"<option_D>\"},\"correctAnswer\":\"<correct_option>\"}, " +

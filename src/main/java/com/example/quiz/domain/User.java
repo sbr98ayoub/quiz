@@ -23,6 +23,26 @@ public class User {
     private String password;
 
     private LocalDateTime createdAt;
+    private String profileImage;
+
+    private  String phone ;
+
+    public String getPhone(){
+        return phone;
+    }
+
+
+    public void setPhone(String phone){
+        this.phone=phone ;
+    }
+
+    public String getProfileImage() {
+        return profileImage;
+    }
+
+    public void setProfileImage(String profileImage) {
+        this.profileImage = profileImage;
+    }
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Quiz> quizzes;
