@@ -62,12 +62,12 @@ public class QuizController {
                 programmingLanguage, difficulty
         );
 
-        try {
+
             // Use the service to call LLaMA (or any other AI endpoint) and parse the JSON
             List<Question> questions = quizService.fetchAndParseQuiz(prompt);
             if (questions == null || questions.isEmpty()) {
                 logger.warn("Failed to parse questions or received an empty list.");
-                return ResponseEntity.status(500).body("Error generating quiz.");
+                throw new RuntimeException("quiz generation returned no quesitons");
             }
 
             // (Approach A) Assign ephemeral (in-memory) IDs so the front end can map answers.
@@ -86,10 +86,8 @@ public class QuizController {
 
             logger.info("Successfully generated and parsed quiz.");
             return ResponseEntity.ok(quiz); // returning the in-memory quiz
-        } catch (Exception e) {
-            logger.error("Error generating or parsing quiz: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body("Error generating quiz.");
-        }
+
+
     }
 
     /**
