@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import reactor.util.retry.Retry;
 
 import java.time.Duration;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -315,6 +316,36 @@ private String sanitizeJson(String jsonResponse) {
         return questionRepository.findById(question.getId())
                 .orElseThrow(() -> new RuntimeException("Question not found for ID: " + question.getId()));
     }
+
+
+    public Map<String, Object> getDashboardData(Long userId) {
+        // Fetch all quizzes for the given user
+        List<Quiz> quizzes = quizRepository.findByUserId(userId);
+
+        // Aggregate data for "Quiz Completion Trends"
+        // For instance, count the number of quizzes taken per month
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM");
+        Map<String, Long> completionTrends = quizzes.stream()
+                .collect(Collectors.groupingBy(
+                        quiz -> quiz.getCreatedAt().format(formatter),
+                        Collectors.counting()
+                ));
+
+        // Aggregate data for "Performance by Topic"
+        // For example, calculate the average score for each programming language
+        Map<String, Double> performanceByTopic = quizzes.stream()
+                .collect(Collectors.groupingBy(
+                        Quiz::getProgrammingLanguage,
+                        Collectors.averagingDouble(q -> q.getScore() != null ? q.getScore() : 0.0)
+                ));
+
+        // Package the results into a Map
+        Map<String, Object> dashboardData = new HashMap<>();
+        dashboardData.put("completionTrends", completionTrends);
+        dashboardData.put("performanceByTopic", performanceByTopic);
+        return dashboardData;
+    }
+
 
 
 

@@ -284,4 +284,10 @@ public class QuizController {
         // Return the details of the quiz questions
         return ResponseEntity.ok(questionDetails);
     }
+    @GetMapping("/dashboard")
+    public ResponseEntity<?> getDashboardData(@RequestParam Long userId) {
+        Map<String, Object> dashboardData = quizService.getDashboardData(userId);
+        return ResponseEntity.ok(dashboardData);
+    }
+
 }

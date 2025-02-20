@@ -114,7 +114,7 @@ public class UserController {
         // Save the updated user
         userService.saveUser(user);
 
-        return ResponseEntity.ok(Map.of("message", "Profile updated successfully."));
+        return ResponseEntity.ok(user);
     }
 
 

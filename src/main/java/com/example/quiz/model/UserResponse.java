@@ -1,6 +1,7 @@
 package com.example.quiz.model;
 
 import jakarta.persistence.*;
+
 import java.util.Map;
 
 @Entity
@@ -21,7 +22,8 @@ public class UserResponse {
     @Column(name = "response")
     private Map<String, String> userAnswers;
 
-    public UserResponse() {}
+    public UserResponse() {
+    }
 
     public UserResponse(Quiz quiz, Map<String, String> userAnswers) {
         this.quiz = quiz;
