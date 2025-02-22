@@ -1,6 +1,7 @@
 package com.example.quiz.controller;
 
 import com.example.quiz.domain.User;
+import com.example.quiz.dtos.LeaderboardDTO;
 import com.example.quiz.model.Question;
 import com.example.quiz.model.Quiz;
 import com.example.quiz.model.QuizResult;
@@ -62,14 +63,14 @@ public class QuizController {
         );
 
 
-            // Use the service to call LLaMA (or any other AI endpoint) and parse the JSON
+
             List<Question> questions = quizService.fetchAndParseQuiz(prompt);
             if (questions == null || questions.isEmpty()) {
                 logger.warn("Failed to parse questions or received an empty list.");
                 throw new RuntimeException("quiz generation returned no quesitons");
             }
 
-            // (Approach A) Assign ephemeral (in-memory) IDs so the front end can map answers.
+            //  Assign ephemeral (in-memory) IDs so the front end can map answers.
             long tempId = 1L;
             for (Question q : questions) {
                 q.setId(tempId++);
@@ -80,7 +81,6 @@ public class QuizController {
             quiz.setProgrammingLanguage(programmingLanguage);
             quiz.setQuestions(questions);
 
-            // Save it in memory only (do NOT persist). If you DO want to persist now, see Approach B
             quizService.setCurrentQuiz(quiz);
 
             logger.info("Successfully generated and parsed quiz.");
@@ -89,11 +89,8 @@ public class QuizController {
 
     }
 
-    /**
-     * Submit quiz answers
-     * The front end calls /quiz/submit with `id = userId` plus all question_id=answer
-     * For example: POST /quiz/submit?id=1&1=A&2=B&3=A ...
-     */
+
+
     @PostMapping("/submit")
     public ResponseEntity<?> submitQuiz(@RequestParam Map<String, String> responses, @RequestParam Long id) {
         logger.info("Processing quiz submission for user ID: {}", id);
@@ -166,10 +163,7 @@ public class QuizController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Store the quiz in the DB. Approach A: we set question.setId(null) so the DB
-     * will treat them as brand-new rows.
-     */
+
     @PostMapping("/store")
     public ResponseEntity<?> storeQuiz(
             @RequestParam Long userId,
@@ -289,5 +283,9 @@ public class QuizController {
         Map<String, Object> dashboardData = quizService.getDashboardData(userId);
         return ResponseEntity.ok(dashboardData);
     }
-
+    @GetMapping("/leaderboard")
+    public ResponseEntity<List<LeaderboardDTO>> getLeaderboard() {
+        List<LeaderboardDTO> leaderboard = quizService.getLeaderboard();
+        return ResponseEntity.ok(leaderboard);
+    }
 }

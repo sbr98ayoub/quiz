@@ -62,16 +62,17 @@ public class UserController {
             return ResponseEntity.status(401).body("Invalid email or password.");
         }
 
-        // Optionally generate and return a token here
+        // Provide default values if profileImage or phone is null
         return ResponseEntity.ok(Map.of(
                 "message", "Login successful.",
                 "userId", user.getId(),
                 "email", user.getEmail(),
                 "fullName", user.getFullName(),
-                "profileImage",user.getProfileImage(),
-                "phone",user.getPhone()
+                "profileImage", user.getProfileImage() == null ? "" : user.getProfileImage(),
+                "phone", user.getPhone() == null ? "" : user.getPhone()
         ));
     }
+
     @PostMapping("/updateProfile")
     public ResponseEntity<?> updateProfile(
             @RequestParam("userId") Long userId,

@@ -1,5 +1,6 @@
 package com.example.quiz.service;
 
+import com.example.quiz.dtos.LeaderboardDTO;
 import com.example.quiz.model.Question;
 import com.example.quiz.model.Quiz;
 import com.example.quiz.model.QuizResult;
@@ -344,6 +345,10 @@ private String sanitizeJson(String jsonResponse) {
         dashboardData.put("completionTrends", completionTrends);
         dashboardData.put("performanceByTopic", performanceByTopic);
         return dashboardData;
+    }
+
+    public List<LeaderboardDTO> getLeaderboard() {
+        return quizRepository.findLeaderboardByAverageScore();
     }
 
 
